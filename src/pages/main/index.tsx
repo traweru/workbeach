@@ -10,7 +10,7 @@ export function MainPage(){
         <div style={{ padding: '20px' }}>
             <StudentsTable/>
         </div>
-        <Button text="add student" color="#6f00ff"/>
+        <Button text="add student" color="#a7a2a2"/><Button text="redact" color="#a7a2a2"/>
         </>
     )
 }

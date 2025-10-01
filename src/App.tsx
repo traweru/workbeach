@@ -1,6 +1,4 @@
-import styled from "styled-components";
 import "./App.css";
-import { useState } from "react";
 import { Route, Routes } from "react-router";
 import { MainPage } from "./pages/main";
 import { LoginPage } from "./pages/auf/login";

@@ -1,8 +1,10 @@
+import SignUpPage from "../../../components/RegisterFunction";
+
 export function RegisterPage(){
     return(
         <>
         <h1>
-            register
+            <SignUpPage/>
         </h1>
         </>
     )
