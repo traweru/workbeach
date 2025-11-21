@@ -11,6 +11,7 @@ import {
   Link,
   Alert,
   IconButton,
+  Snackbar,
 } from '@mui/material';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import Visibility from '@mui/icons-material/Visibility';
@@ -21,6 +22,7 @@ import { useTheme } from '@mui/material/styles';
 
 const providers = [{ id: 'credentials', name: 'Email and Password' }];
 
+// Custom Email Field Component
 function CustomEmailField() {
   return (
     <TextField
@@ -45,6 +47,7 @@ function CustomEmailField() {
   );
 }
 
+// Custom Password Field Component
 function CustomPasswordField() {
   const [showPassword, setShowPassword] = React.useState(false);
 
@@ -64,6 +67,7 @@ function CustomPasswordField() {
         type={showPassword ? 'text' : 'password'}
         name="password"
         size="small"
+        required
         endAdornment={
           <InputAdornment position="end">
             <IconButton
@@ -87,7 +91,8 @@ function CustomPasswordField() {
   );
 }
 
-function CustomButton() {
+// Custom Button Component
+function CustomButton({ loading }: { loading: boolean }) {
   return (
     <Button
       type="submit"
@@ -97,25 +102,38 @@ function CustomButton() {
       disableElevation
       fullWidth
       sx={{ my: 2 }}
+      disabled={loading}
     >
-      Log In
+      {loading ? 'Logging in...' : 'Log In'}
     </Button>
   );
 }
 
+// Sign Up Link Component
 function SignUpLink() {
+  const handleSignUpClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    window.location.href = '/register';
+  };
+
   return (
-    <Link href="/register" variant="body2">
+    <Link 
+      href="/register" 
+      variant="body2" 
+      onClick={handleSignUpClick}
+      sx={{ cursor: 'pointer' }}
+    >
       NEW STUDENT?
     </Link>
   );
 }
 
-
+// Title Component
 function Title() {
   return <h2 style={{ marginBottom: 8 }}>Login</h2>;
 }
 
+// Subtitle Component
 function Subtitle() {
   return (
     <Alert sx={{ mb: 2, px: 1, py: 0.25, width: '100%' }} severity="warning">
@@ -124,6 +142,7 @@ function Subtitle() {
   );
 }
 
+// Remember Me Checkbox Component
 function RememberMeCheckbox() {
   const theme = useTheme();
   return (
@@ -147,27 +166,83 @@ function RememberMeCheckbox() {
   );
 }
 
-export default function SlotsSignIn() {
+export default function LoginFunction() {
   const theme = useTheme();
+  const [error, setError] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+  const handleSignIn = async (_provider: unknown, formData: FormData) => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const email = formData.get('email') as string;
+      const password = formData.get('password') as string;
+
+      console.log('Sending login request to Spring...');
+
+      const response = await fetch('http://localhost:8080/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          username: email,  // Ваш Spring ожидает 'username'
+          password: password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('Login successful:', data);
+        
+        // Сохраняем данные аутентификации
+        localStorage.setItem('authToken', 'authenticated');
+        localStorage.setItem('user', JSON.stringify({
+          username: data.username,
+          roles: data.roles
+        }));
+        
+        // Перенаправляем на главную страницу
+        window.location.href = '/main';
+      } else {
+        setError(data.message || data.error || 'Login failed');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Network error. Please check if Spring server is running.');
+    } finally {
+      setLoading(false);
+    }
+
+    return undefined;
+  };
+
   return (
     <AppProvider theme={theme}>
       <SignInPage
-        signIn={(provider, formData) =>
-          alert(
-            `Logging in with "${provider.name}" and credentials: ${formData.get('email')}, ${formData.get('password')}, and checkbox value: ${formData.get('remember')}`,
-          )
-        }
+        signIn={handleSignIn}
         slots={{
           title: Title,
           subtitle: Subtitle,
           emailField: CustomEmailField,
           passwordField: CustomPasswordField,
-          submitButton: CustomButton,
+          submitButton: () => <CustomButton loading={loading} />,
           signUpLink: SignUpLink,
           rememberMe: RememberMeCheckbox
         }}
         slotProps={{ form: { noValidate: true } }}
         providers={providers}
+      />
+      
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError('')}
+        message={error}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
     </AppProvider>
   );

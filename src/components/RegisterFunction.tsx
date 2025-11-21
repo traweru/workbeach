@@ -11,15 +11,14 @@ import {
   Link,
   Alert,
   IconButton,
+  Snackbar,
+  Box,
+  Paper,
 } from '@mui/material';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import { AppProvider } from '@toolpad/core/AppProvider';
-import { SignInPage } from '@toolpad/core/SignInPage';
 import { useTheme } from '@mui/material/styles';
-
-const providers = [{ id: 'credentials', name: 'Email and Password' }];
 
 function CustomEmailField() {
   return (
@@ -45,7 +44,6 @@ function CustomEmailField() {
   );
 }
 
-
 function CustomPasswordField() {
   const [showPassword, setShowPassword] = React.useState(false);
 
@@ -65,6 +63,7 @@ function CustomPasswordField() {
         type={showPassword ? 'text' : 'password'}
         name="password"
         size="small"
+        required
         endAdornment={
           <InputAdornment position="end">
             <IconButton
@@ -88,8 +87,7 @@ function CustomPasswordField() {
   );
 }
 
-
-function CustomButton() {
+function CustomButton({ loading }: { loading: boolean }) {
   return (
     <Button
       type="submit"
@@ -99,15 +97,26 @@ function CustomButton() {
       disableElevation
       fullWidth
       sx={{ my: 2 }}
+      disabled={loading}
     >
-      Sign Up
+      {loading ? 'Signing Up...' : 'Sign Up'}
     </Button>
   );
 }
 
 function SignInLink() {
+  const handleSignInClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    window.location.href = '/';
+  };
+
   return (
-    <Link href="/login" variant="body2">
+    <Link 
+      href="/" 
+      variant="body2" 
+      onClick={handleSignInClick}
+      sx={{ cursor: 'pointer' }}
+    >
       ALREADY HAVE AN ACCOUNT?
     </Link>
   );
@@ -135,6 +144,7 @@ function TermsCheckbox() {
           name="terms"
           value="true"
           color="primary"
+          required
           sx={{ padding: 0.5, '& .MuiSvgIcon-root': { fontSize: 20 } }}
         />
       }
@@ -150,32 +160,125 @@ function TermsCheckbox() {
 
 export default function SignUpPage() {
   const theme = useTheme();
-  
-  const handleSignUp = (_provider: any, formData: FormData) => {
-    alert(
-      `Creating account with: ${formData.get('name')}, ${formData.get('email')}, password: ${formData.get('password')}, and terms accepted: ${formData.get('terms')}`
-    );
+  const [error, setError] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
+  setLoading(true);
+  setError('');
+
+  const formData = new FormData(event.currentTarget);
+  const email = formData.get('email') as string;
+  const password = formData.get('password') as string;
+  const terms = formData.get('terms');
+
+  if (!terms) {
+    setError('Please agree to the Terms and Conditions');
+    setLoading(false);
+    return;
+  }
+
+  const requestBody = {
+    username: email,
+    password: password,
+    email: email,
+    firstName: 'Student',
+    lastName: 'User', 
+    role: 'STUDENT'
   };
 
+  console.log('📤 Registration request:', requestBody);
+  
+  try {
+    const response = await fetch('http://localhost:8080/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response ok:', response.ok);
+    
+    // Читаем ответ как текст сначала
+    const responseText = await response.text();
+    console.log('📥 Raw response:', responseText);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError);
+      throw new Error('Invalid JSON response from server');
+    }
+
+    console.log('📥 Parsed response:', data);
+
+    if (response.ok) {
+      // УСПЕШНАЯ регистрация
+      console.log('✅ Registration successful! User ID:', data.userid);
+      alert('Registration successful! You can now login.');
+      window.location.href = '/'; // Перенаправляем на логин
+    } else {
+      // ОШИБКА от сервера
+      console.log('❌ Server error:', data);
+      setError(data.message || data.error || `Registration failed`);
+    }
+    
+  } catch (error: any) {
+    console.error('❌ Network error:', error);
+    if (error.name === 'TypeError') {
+      setError('Network error: Cannot connect to server. Make sure backend is running.');
+    } else {
+      setError(error.message || 'Registration failed. Please try again.');
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
   return (
-    <AppProvider theme={theme}>
-      <SignInPage
-        signIn={handleSignUp}
-        slots={{
-          title: Title,
-          subtitle: Subtitle,
-          emailField: CustomEmailField,
-          passwordField: CustomPasswordField,
-          submitButton: CustomButton,
-          signUpLink: SignInLink,
-          rememberMe: TermsCheckbox,
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        backgroundColor: theme.palette.background.default,
+        p: 2,
+      }}
+    >
+      <Paper
+        elevation={3}
+        sx={{
+          p: 4,
+          maxWidth: 400,
+          width: '100%',
         }}
-        slotProps={{ 
-          form: { noValidate: true },
-          
-        }}
-        providers={providers}
-      />
-    </AppProvider>
+      >
+        <Title />
+        <Subtitle />
+        
+        <form onSubmit={handleRegister}>
+          <CustomEmailField />
+          <CustomPasswordField />
+          <TermsCheckbox />
+          <CustomButton loading={loading} />
+          <Box sx={{ textAlign: 'center', mt: 2 }}>
+            <SignInLink />
+          </Box>
+        </form>
+
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={() => setError('')}
+          message={error}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        />
+      </Paper>
+    </Box>
   );
 }
