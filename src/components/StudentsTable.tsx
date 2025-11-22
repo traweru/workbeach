@@ -1,4 +1,4 @@
-
+// components/StudentsTable.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Table,
@@ -13,28 +13,55 @@ import {
   IconButton,
   Tooltip,
   Alert,
-  Box
+  Box,
+  TablePagination,
+  TableSortLabel,
+  Typography
 } from '@mui/material';
 import { Delete, Edit, Add } from '@mui/icons-material';
 import { useAuth } from "../context/AuthContext";
-
 import type { Student } from '../Types/Student';
-import { deleteStudent, deleteStudents, fetchStudents } from '../api/students';
+import { StudentDialog } from './StudentDialog';
+import { createStudent, deleteStudent, deleteStudents, fetchStudents, updateStudent } from '../api/students';
+
+interface HeadCell {
+  id: keyof Student;
+  label: string;
+  sortable: boolean;
+  numeric: boolean;
+}
+
+const headCells: HeadCell[] = [
+  { id: 'name', label: 'Name', sortable: true, numeric: false },
+  { id: 'grade', label: 'Grade', sortable: true, numeric: true },
+  { id: 'attendance', label: 'Attendance', sortable: true, numeric: true },
+  { id: 'assignments', label: 'Assignments', sortable: true, numeric: true },
+  { id: 'rating', label: 'Rating', sortable: true, numeric: true },
+];
 
 export default function StudentsTable() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [error, setError] = useState<string>('');
-  
-  
-  const { isAdmin, user } = useAuth();
+  const [success, setSuccess] = useState<string>('');
+  const { isAdmin } = useAuth();
 
-  console.log('Current user:', user); 
-  console.log(' Is admin:', isAdmin);
+  
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+  const [orderBy, setOrderBy] = useState<keyof Student>('name');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
+  
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+
+  
   const loadStudents = async () => {
     try {
+      console.log('🔄 Loading students...');
       const data = await fetchStudents();
+      console.log('✅ Students loaded:', data);
       setStudents(data);
     } catch (err) {
       setError('Failed to load students');
@@ -46,9 +73,48 @@ export default function StudentsTable() {
     loadStudents();
   }, []);
 
+  
+  const handleSort = (property: keyof Student) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+  const sortedStudents = React.useMemo(() => {
+    return [...students].sort((a, b) => {
+      const aValue = a[orderBy];
+      const bValue = b[orderBy];
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return order === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+      
+      if (aValue < bValue) return order === 'asc' ? -1 : 1;
+      if (aValue > bValue) return order === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [students, order, orderBy]);
+
+  
+  const handleChangePage = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const visibleStudents = React.useMemo(() => {
+    return sortedStudents.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [sortedStudents, page, rowsPerPage]);
+
+  
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const allIds = students.map(student => student.id);
+      const allIds = visibleStudents.map(student => student.id);
       setSelected(allIds);
     } else {
       setSelected([]);
@@ -75,6 +141,7 @@ export default function StudentsTable() {
     setSelected(newSelected);
   };
 
+  
   const handleDelete = async (id: number) => {
     if (!isAdmin) {
       setError('Only administrators can delete students');
@@ -86,9 +153,12 @@ export default function StudentsTable() {
     }
 
     try {
+      console.log('🗑️ Deleting student ID:', id);
       await deleteStudent(id);
       await loadStudents();
       setSelected(selected.filter(selectedId => selectedId !== id));
+      setSuccess('Student deleted successfully');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to delete student');
       console.error('Error deleting student:', err);
@@ -111,44 +181,79 @@ export default function StudentsTable() {
     }
 
     try {
+      console.log('🗑️ Bulk deleting students:', selected);
       await deleteStudents(selected);
       await loadStudents();
       setSelected([]);
+      setSuccess(`${selected.length} students deleted successfully`);
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to delete students');
       console.error('Error deleting students:', err);
     }
   };
 
-  const handleAddStudent = () => {
-    if (!isAdmin) {
-      setError('Only administrators can add students');
-      return;
+  const handleAddStudent = async (studentData: Omit<Student, 'id'>) => {
+    try {
+      console.log('➕ Adding new student:', studentData);
+      await createStudent(studentData);
+      await loadStudents();
+      setOpenAddDialog(false);
+      setSuccess('Student added successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError('Failed to add student: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      console.error('Error adding student:', err);
     }
-    
-    console.log('Open add student dialog');
   };
 
   const handleEditStudent = (student: Student) => {
+    console.log('✏️ Opening edit dialog for student:', student);
     if (!isAdmin) {
       setError('Only administrators can edit students');
       return;
     }
-    
-    console.log('Open edit student dialog for:', student);
+    setEditingStudent(student);
   };
 
+  const handleSaveEdit = async (studentData: Omit<Student, 'id'>) => {
+    console.log('💾 Saving edited student:', studentData);
+    console.log('📝 Editing student ID:', editingStudent?.id);
+    
+    if (!editingStudent) {
+      console.error('❌ No student selected for editing');
+      return;
+    }
+    
+    try {
+      console.log('🔄 Updating student with ID:', editingStudent.id);
+      await updateStudent(editingStudent.id, studentData);
+      await loadStudents();
+      setEditingStudent(null);
+      setSuccess('Student updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError('Failed to update student: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      console.error('Error updating student:', err);
+    }
+  };
+
+  const isSelected = (id: number) => selected.indexOf(id) !== -1;
+
   return (
-    <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+    <Paper sx={{ width: '100%', mb: 2 }}>
       
       {isAdmin && (
-        <Box sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+        <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
           <Tooltip title="Add Student">
             <Button
               variant="contained"
               startIcon={<Add />}
-              onClick={handleAddStudent}
-              color="primary"
+              onClick={() => setOpenAddDialog(true)}
+              sx={{ 
+                backgroundColor: '#4CAF50',
+                '&:hover': { backgroundColor: '#45a049' }
+              }}
             >
               Add Student
             </Button>
@@ -167,95 +272,205 @@ export default function StudentsTable() {
               </Button>
             </span>
           </Tooltip>
+
+          <Typography sx={{ flex: 1 }} />
+          
+          <Typography variant="body2" color="text.secondary">
+            Total: {students.length} students
+          </Typography>
         </Box>
       )}
 
+      
       {error && (
-        <Alert severity="error" onClose={() => setError('')}>
+        <Alert severity="error" onClose={() => setError('')} sx={{ mx: 2, mt: 1 }}>
           {error}
         </Alert>
       )}
+      
+      {success && (
+        <Alert severity="success" onClose={() => setSuccess('')} sx={{ mx: 2, mt: 1 }}>
+          {success}
+        </Alert>
+      )}
 
+      
       <TableContainer>
-        <Table stickyHeader aria-label="sticky table">
+        <Table sx={{ minWidth: 750 }} aria-labelledby="tableTitle" size="medium">
           <TableHead>
             <TableRow>
               
               {isAdmin && (
                 <TableCell padding="checkbox">
                   <Checkbox
-                    indeterminate={selected.length > 0 && selected.length < students.length}
-                    checked={students.length > 0 && selected.length === students.length}
+                    color="primary"
+                    indeterminate={selected.length > 0 && selected.length < visibleStudents.length}
+                    checked={visibleStudents.length > 0 && selected.length === visibleStudents.length}
                     onChange={handleSelectAll}
+                    inputProps={{ 'aria-label': 'select all students' }}
                   />
                 </TableCell>
               )}
               
-              <TableCell>Name</TableCell>
-              <TableCell>Grade</TableCell>
-              <TableCell>Attendance</TableCell>
-              <TableCell>Assignments</TableCell>
-              <TableCell>Rating</TableCell>
+              
+              {headCells.map((headCell) => (
+                <TableCell
+                  key={headCell.id}
+                  align={headCell.numeric ? 'right' : 'left'}
+                  sortDirection={orderBy === headCell.id ? order : false}
+                  sx={{ fontWeight: 'bold' }}
+                >
+                  {headCell.sortable ? (
+                    <TableSortLabel
+                      active={orderBy === headCell.id}
+                      direction={orderBy === headCell.id ? order : 'asc'}
+                      onClick={() => handleSort(headCell.id)}
+                    >
+                      {headCell.label}
+                    </TableSortLabel>
+                  ) : (
+                    headCell.label
+                  )}
+                </TableCell>
+              ))}
               
               
-              {isAdmin && <TableCell>Actions</TableCell>}
+              {isAdmin && (
+                <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+              )}
             </TableRow>
           </TableHead>
           
           <TableBody>
-            {students.map((student) => (
-              <TableRow hover key={student.id}>
-                
-                {isAdmin && (
-                  <TableCell padding="checkbox">
-                    <Checkbox
-                      checked={selected.indexOf(student.id) !== -1}
-                      onChange={() => handleSelect(student.id)}
-                    />
-                  </TableCell>
-                )}
-                
-                <TableCell>{student.name}</TableCell>
-                <TableCell>{student.grade}</TableCell>
-                <TableCell>{student.attendance}</TableCell>
-                <TableCell>{student.assignments}</TableCell>
-                <TableCell>{student.rating}</TableCell>
-                
-                
-                {isAdmin && (
-                  <TableCell>
-                    <Tooltip title="Edit">
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleEditStudent(student)}
+            {visibleStudents.map((student, index) => {
+              const isItemSelected = isSelected(student.id);
+              const labelId = `enhanced-table-checkbox-${index}`;
+
+              return (
+                <TableRow
+                  hover
+                  role="checkbox"
+                  aria-checked={isItemSelected}
+                  tabIndex={-1}
+                  key={student.id}
+                  selected={isItemSelected}
+                  sx={{ '&:hover': { backgroundColor: 'action.hover' } }}
+                >
+                  
+                  {isAdmin && (
+                    <TableCell padding="checkbox">
+                      <Checkbox
                         color="primary"
-                      >
-                        <Edit />
-                      </IconButton>
-                    </Tooltip>
-                    
-                    <Tooltip title="Delete">
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleDelete(student.id)}
-                        color="error"
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Tooltip>
+                        checked={isItemSelected}
+                        inputProps={{ 'aria-labelledby': labelId }}
+                        onChange={() => handleSelect(student.id)}
+                      />
+                    </TableCell>
+                  )}
+                  
+                  
+                  <TableCell component="th" id={labelId} scope="row">
+                    {student.name}
                   </TableCell>
-                )}
+                  <TableCell align="right">{student.grade}</TableCell>
+                  <TableCell align="right">{student.attendance}</TableCell>
+                  <TableCell align="right">{student.assignments}</TableCell>
+                  <TableCell align="right">{student.rating}</TableCell>
+                  
+                  
+                  {isAdmin && (
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Edit">
+                          <IconButton 
+                            size="small" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log('🟡 Edit button clicked for student:', student);
+                              handleEditStudent(student);
+                            }}
+                            color="primary"
+                            sx={{ 
+                              '&:hover': { 
+                                backgroundColor: 'primary.light',
+                                transform: 'scale(1.1)' 
+                              },
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Edit />
+                          </IconButton>
+                        </Tooltip>
+                        
+                        <Tooltip title="Delete">
+                          <IconButton 
+                            size="small" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log('🔴 Delete button clicked for student ID:', student.id);
+                              handleDelete(student.id);
+                            }}
+                            color="error"
+                            sx={{ 
+                              '&:hover': { 
+                                backgroundColor: 'error.light',
+                                transform: 'scale(1.1)' 
+                              },
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Delete />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })}
+            
+            
+            {visibleStudents.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={isAdmin ? 7 : 6} sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" color="text.secondary">
+                    No students found
+                  </Typography>
+                </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {students.length === 0 && (
-        <Box sx={{ p: 4, textAlign: 'center' }}>
-          No students found
-        </Box>
-      )}
+      
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25]}
+        component="div"
+        count={students.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={(_, newPage) => handleChangePage(newPage)}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        sx={{ borderTop: 1, borderColor: 'divider' }}
+      />
+
+      {/* Dialogs */}
+      <StudentDialog 
+        open={openAddDialog}
+        onClose={() => setOpenAddDialog(false)}
+        onSave={handleAddStudent}
+      />
+      
+      <StudentDialog 
+        open={!!editingStudent}
+        onClose={() => {
+          console.log('🔴 Closing edit dialog');
+          setEditingStudent(null);
+        }}
+        onSave={handleSaveEdit}
+        student={editingStudent || undefined}
+      />
     </Paper>
   );
 }

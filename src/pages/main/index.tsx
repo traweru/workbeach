@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Button } from "../../components/Buttons";
+
 import StudentsTable from "../../components/StudentsTable";
 import { useAuth } from "../../context/AuthContext";
 import { createStudent } from '../../api/students';
@@ -24,11 +24,7 @@ export function MainPage(){
         </div>
         {isAdmin && (
             <>
-                <Button 
-                    text="Add Student" 
-                    color="#9a9c9aff" 
-                    onClick={() => setAddDialogOpen(true)}
-                />
+
                 
                 <StudentDialog 
                     open={isAddDialogOpen}

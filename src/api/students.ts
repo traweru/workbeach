@@ -82,33 +82,58 @@ export const deleteStudents = async (ids: number[]): Promise<void> => {
 
 
 export const createStudent = async (student: Omit<Student, 'id'>): Promise<Student> => {
+  const token = localStorage.getItem('authToken');
+  
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
     },
-    credentials: 'include', // Важно: отправляем cookies
     body: JSON.stringify(student),
   });
   
-  if (!response.ok) {
-    throw new Error('Failed to create student');
+  console.log('Create student status:', response.status);
+  
+  if (response.status === 403) {
+    throw new Error('Access denied. Only ADMIN users can create students.');
   }
+  
+  if (!response.ok) {
+    throw new Error(`Failed to create student: ${response.status}`);
+  }
+  
   return response.json();
 };
 
 export const updateStudent = async (id: number, student: Omit<Student, 'id'>): Promise<Student> => {
+  const token = localStorage.getItem('authToken');
+  
+  console.log('🔄 Sending PUT request for student ID:', id);
+  console.log('📦 Update data:', student);
+  
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'PUT',
     headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
     },
-    credentials: 'include', // Важно: отправляем cookies
     body: JSON.stringify(student),
   });
   
-  if (!response.ok) {
-    throw new Error('Failed to update student');
+  console.log('📡 Update response status:', response.status);
+  
+  if (response.status === 403) {
+    throw new Error('Access denied. Only ADMIN users can update students.');
   }
-  return response.json();
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ Update error response:', errorText);
+    throw new Error(`Failed to update student: ${response.status} - ${errorText}`);
+  }
+  
+  const updatedStudent = await response.json();
+  console.log('✅ Update successful:', updatedStudent);
+  return updatedStudent;
 };

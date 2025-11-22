@@ -1,105 +1,139 @@
-import React from 'react';
+// components/StudentDialog.tsx
+import React, { useState, useEffect } from 'react';
 import {
-    Dialog, DialogTitle, DialogContent, DialogActions,
-    TextField, Button
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Box
 } from '@mui/material';
 import type { Student } from '../Types/Student';
 
 interface StudentDialogProps {
-    open: boolean;
-    onClose: () => void;
-    onSave: (student: Omit<Student, 'id'>) => void;
-    student?: Student | null;
+  open: boolean;
+  onClose: () => void;
+  onSave: (studentData: Omit<Student, 'id'>) => void;
+  student?: Student;
 }
 
-export function StudentDialog({ open, onClose, onSave, student }: StudentDialogProps) {
-    const [formData, setFormData] = React.useState({
-        name: '',
-        grade: 0,
-        attendance: 0,
-        assignments: 0,
-        rating: 0
-    });
+export const StudentDialog: React.FC<StudentDialogProps> = ({
+  open,
+  onClose,
+  onSave,
+  student
+}) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    grade: 0,
+    attendance: 0,
+    assignments: 0,
+    rating: 0
+  });
 
-    
-    React.useEffect(() => {
-        if (student) {
-            setFormData({
-                name: student.name,
-                grade: student.grade,
-                attendance: student.attendance,
-                assignments: student.assignments,
-                rating: student.rating
-            });
-        } else {
-            setFormData({
-                name: '',
-                grade: 0,
-                attendance: 0,
-                assignments: 0,
-                rating: 0
-            });
-        }
-    }, [student, open]);
+  
+  useEffect(() => {
+    if (open) {
+      if (student) {
+        
+        setFormData({
+          name: student.name,
+          grade: student.grade,
+          attendance: student.attendance,
+          assignments: student.assignments,
+          rating: student.rating
+        });
+      } else {
+        
+        setFormData({
+          name: '',
+          grade: 0,
+          attendance: 0,
+          assignments: 0,
+          rating: 0
+        });
+      }
+    }
+  }, [open, student]);
 
-    const handleSave = () => {
-        onSave(formData);
-    };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'name' ? value : Number(value)
+    }));
+  };
 
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle>
-                {student ? 'Редактировать студента' : 'Добавить нового студента'}
-            </DialogTitle>
-            <DialogContent>
-                <TextField
-                    autoFocus
-                    margin="dense"
-                    label="Полное имя"
-                    fullWidth
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                />
-                <TextField
-                    margin="dense"
-                    label="Оценка"
-                    type="number"
-                    fullWidth
-                    value={formData.grade}
-                    onChange={(e) => setFormData({...formData, grade: Number(e.target.value)})}
-                />
-                <TextField
-                    margin="dense"
-                    label="Посещаемость %"
-                    type="number"
-                    fullWidth
-                    value={formData.attendance}
-                    onChange={(e) => setFormData({...formData, attendance: Number(e.target.value)})}
-                />
-                <TextField
-                    margin="dense"
-                    label="Выполненные задания"
-                    type="number"
-                    fullWidth
-                    value={formData.assignments}
-                    onChange={(e) => setFormData({...formData, assignments: Number(e.target.value)})}
-                />
-                <TextField
-                    margin="dense"
-                    label="Рейтинг"
-                    type="number"
-                    fullWidth
-                    inputProps={{ step: "0.1" }} 
-                    value={formData.rating}
-                    onChange={(e) => setFormData({...formData, rating: Number(e.target.value)})}
-                />
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Отмена</Button>
-                <Button onClick={handleSave} variant="contained">
-                    {student ? 'Сохранить' : 'Добавить'}
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-}
+  const handleSave = () => {
+    // Валидация
+    if (!formData.name.trim()) {
+      alert('Please enter student name');
+      return;
+    }
+
+    onSave(formData);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        {student ? 'Edit Student' : 'Add New Student'}
+      </DialogTitle>
+      <DialogContent>
+        <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <TextField
+            name="name"
+            label="Student Name"
+            value={formData.name}
+            onChange={handleChange}
+            fullWidth
+            required
+          />
+          <TextField
+            name="grade"
+            label="Grade"
+            type="number"
+            value={formData.grade}
+            onChange={handleChange}
+            fullWidth
+            inputProps={{ min: 0, max: 100 }}
+          />
+          <TextField
+            name="attendance"
+            label="Attendance (%)"
+            type="number"
+            value={formData.attendance}
+            onChange={handleChange}
+            fullWidth
+            inputProps={{ min: 0, max: 100 }}
+          />
+          <TextField
+            name="assignments"
+            label="Assignments Completed"
+            type="number"
+            value={formData.assignments}
+            onChange={handleChange}
+            fullWidth
+            inputProps={{ min: 0 }}
+          />
+          <TextField
+            name="rating"
+            label="Rating"
+            type="number"
+            value={formData.rating}
+            onChange={handleChange}
+            fullWidth
+            inputProps={{ min: 0, max: 10, step: 0.1 }}
+          />
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={handleSave} variant="contained" color="primary">
+          {student ? 'Update' : 'Add'} Student
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
