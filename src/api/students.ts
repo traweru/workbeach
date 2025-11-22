@@ -2,7 +2,7 @@ import type { Student } from "../Types/Student";
 
 const API_URL = 'http://localhost:8080/api/students';
 
-// Для сессионной аутентификации используем cookies
+
 export const fetchStudents = async (): Promise<Student[]> => {
   try {
     const token = localStorage.getItem('authToken');

@@ -66,7 +66,7 @@ export const StudentDialog: React.FC<StudentDialogProps> = ({
   };
 
   const handleSave = () => {
-    // Валидация
+    
     if (!formData.name.trim()) {
       alert('Please enter student name');
       return;

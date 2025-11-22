@@ -1,4 +1,3 @@
-// components/StudentsTable.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Table,
@@ -46,26 +45,21 @@ export default function StudentsTable() {
   const [success, setSuccess] = useState<string>('');
   const { isAdmin } = useAuth();
 
-  
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
   const [orderBy, setOrderBy] = useState<keyof Student>('name');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
-  
   const loadStudents = async () => {
     try {
-      console.log('🔄 Loading students...');
       const data = await fetchStudents();
-      console.log('✅ Students loaded:', data);
       setStudents(data);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('Failed to load students');
-      console.error('Error loading students:', err);
     }
   };
 
@@ -73,7 +67,6 @@ export default function StudentsTable() {
     loadStudents();
   }, []);
 
-  
   const handleSort = (property: keyof Student) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
@@ -97,7 +90,6 @@ export default function StudentsTable() {
     });
   }, [students, order, orderBy]);
 
-  
   const handleChangePage = (newPage: number) => {
     setPage(newPage);
   };
@@ -111,7 +103,6 @@ export default function StudentsTable() {
     return sortedStudents.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   }, [sortedStudents, page, rowsPerPage]);
 
-  
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
       const allIds = visibleStudents.map(student => student.id);
@@ -141,7 +132,6 @@ export default function StudentsTable() {
     setSelected(newSelected);
   };
 
-  
   const handleDelete = async (id: number) => {
     if (!isAdmin) {
       setError('Only administrators can delete students');
@@ -153,15 +143,14 @@ export default function StudentsTable() {
     }
 
     try {
-      console.log('🗑️ Deleting student ID:', id);
       await deleteStudent(id);
       await loadStudents();
       setSelected(selected.filter(selectedId => selectedId !== id));
       setSuccess('Student deleted successfully');
       setTimeout(() => setSuccess(''), 3000);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('Failed to delete student');
-      console.error('Error deleting student:', err);
     }
   };
 
@@ -181,21 +170,19 @@ export default function StudentsTable() {
     }
 
     try {
-      console.log('🗑️ Bulk deleting students:', selected);
       await deleteStudents(selected);
       await loadStudents();
       setSelected([]);
       setSuccess(`${selected.length} students deleted successfully`);
       setTimeout(() => setSuccess(''), 3000);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('Failed to delete students');
-      console.error('Error deleting students:', err);
     }
   };
 
   const handleAddStudent = async (studentData: Omit<Student, 'id'>) => {
     try {
-      console.log('➕ Adding new student:', studentData);
       await createStudent(studentData);
       await loadStudents();
       setOpenAddDialog(false);
@@ -203,12 +190,10 @@ export default function StudentsTable() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to add student: ' + (err instanceof Error ? err.message : 'Unknown error'));
-      console.error('Error adding student:', err);
     }
   };
 
   const handleEditStudent = (student: Student) => {
-    console.log('✏️ Opening edit dialog for student:', student);
     if (!isAdmin) {
       setError('Only administrators can edit students');
       return;
@@ -217,16 +202,9 @@ export default function StudentsTable() {
   };
 
   const handleSaveEdit = async (studentData: Omit<Student, 'id'>) => {
-    console.log('💾 Saving edited student:', studentData);
-    console.log('📝 Editing student ID:', editingStudent?.id);
-    
-    if (!editingStudent) {
-      console.error('❌ No student selected for editing');
-      return;
-    }
+    if (!editingStudent) return;
     
     try {
-      console.log('🔄 Updating student with ID:', editingStudent.id);
       await updateStudent(editingStudent.id, studentData);
       await loadStudents();
       setEditingStudent(null);
@@ -234,7 +212,6 @@ export default function StudentsTable() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to update student: ' + (err instanceof Error ? err.message : 'Unknown error'));
-      console.error('Error updating student:', err);
     }
   };
 
@@ -242,7 +219,6 @@ export default function StudentsTable() {
 
   return (
     <Paper sx={{ width: '100%', mb: 2 }}>
-      
       {isAdmin && (
         <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
           <Tooltip title="Add Student">
@@ -281,7 +257,6 @@ export default function StudentsTable() {
         </Box>
       )}
 
-      
       {error && (
         <Alert severity="error" onClose={() => setError('')} sx={{ mx: 2, mt: 1 }}>
           {error}
@@ -294,12 +269,10 @@ export default function StudentsTable() {
         </Alert>
       )}
 
-      
       <TableContainer>
         <Table sx={{ minWidth: 750 }} aria-labelledby="tableTitle" size="medium">
           <TableHead>
             <TableRow>
-              
               {isAdmin && (
                 <TableCell padding="checkbox">
                   <Checkbox
@@ -311,7 +284,6 @@ export default function StudentsTable() {
                   />
                 </TableCell>
               )}
-              
               
               {headCells.map((headCell) => (
                 <TableCell
@@ -334,7 +306,6 @@ export default function StudentsTable() {
                 </TableCell>
               ))}
               
-              
               {isAdmin && (
                 <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
               )}
@@ -356,7 +327,6 @@ export default function StudentsTable() {
                   selected={isItemSelected}
                   sx={{ '&:hover': { backgroundColor: 'action.hover' } }}
                 >
-                  
                   {isAdmin && (
                     <TableCell padding="checkbox">
                       <Checkbox
@@ -368,7 +338,6 @@ export default function StudentsTable() {
                     </TableCell>
                   )}
                   
-                  
                   <TableCell component="th" id={labelId} scope="row">
                     {student.name}
                   </TableCell>
@@ -376,7 +345,6 @@ export default function StudentsTable() {
                   <TableCell align="right">{student.attendance}</TableCell>
                   <TableCell align="right">{student.assignments}</TableCell>
                   <TableCell align="right">{student.rating}</TableCell>
-                  
                   
                   {isAdmin && (
                     <TableCell>
@@ -386,7 +354,6 @@ export default function StudentsTable() {
                             size="small" 
                             onClick={(e) => {
                               e.stopPropagation();
-                              console.log('🟡 Edit button clicked for student:', student);
                               handleEditStudent(student);
                             }}
                             color="primary"
@@ -407,7 +374,6 @@ export default function StudentsTable() {
                             size="small" 
                             onClick={(e) => {
                               e.stopPropagation();
-                              console.log('🔴 Delete button clicked for student ID:', student.id);
                               handleDelete(student.id);
                             }}
                             color="error"
@@ -429,7 +395,6 @@ export default function StudentsTable() {
               );
             })}
             
-            
             {visibleStudents.length === 0 && (
               <TableRow>
                 <TableCell colSpan={isAdmin ? 7 : 6} sx={{ textAlign: 'center', py: 4 }}>
@@ -443,7 +408,6 @@ export default function StudentsTable() {
         </Table>
       </TableContainer>
 
-      
       <TablePagination
         rowsPerPageOptions={[5, 10, 25]}
         component="div"
@@ -455,7 +419,6 @@ export default function StudentsTable() {
         sx={{ borderTop: 1, borderColor: 'divider' }}
       />
 
-      {/* Dialogs */}
       <StudentDialog 
         open={openAddDialog}
         onClose={() => setOpenAddDialog(false)}
@@ -464,10 +427,7 @@ export default function StudentsTable() {
       
       <StudentDialog 
         open={!!editingStudent}
-        onClose={() => {
-          console.log('🔴 Closing edit dialog');
-          setEditingStudent(null);
-        }}
+        onClose={() => setEditingStudent(null)}
         onSave={handleSaveEdit}
         student={editingStudent || undefined}
       />

@@ -206,7 +206,7 @@ const handleSignIn = async (_provider: unknown, formData: FormData): Promise<Aut
         authenticated: true
       };
       
-      // ✅ Используем реальный токен из ответа, а не "session-auth"
+      
       login(userData, data.token); 
       window.location.href = '/main';
       
