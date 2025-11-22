@@ -48,7 +48,7 @@ function CustomEmailField() {
   );
 }
 
-// Custom Password Field Component
+
 function CustomPasswordField() {
   const [showPassword, setShowPassword] = React.useState(false);
 
@@ -92,7 +92,7 @@ function CustomPasswordField() {
   );
 }
 
-// Custom Button Component
+
 function CustomButton({ loading }: { loading: boolean }) {
   return (
     <Button
@@ -110,7 +110,7 @@ function CustomButton({ loading }: { loading: boolean }) {
   );
 }
 
-// Sign Up Link Component
+
 function SignUpLink() {
   const handleSignUpClick = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -129,12 +129,12 @@ function SignUpLink() {
   );
 }
 
-// Title Component
+
 function Title() {
   return <h2 style={{ marginBottom: 8 }}>Login</h2>;
 }
 
-// Subtitle Component
+
 function Subtitle() {
   return (
     <Alert sx={{ mb: 2, px: 1, py: 0.25, width: '100%' }} severity="warning">
@@ -143,7 +143,7 @@ function Subtitle() {
   );
 }
 
-// Remember Me Checkbox Component
+
 function RememberMeCheckbox() {
   const theme = useTheme();
   return (
@@ -193,7 +193,6 @@ const handleSignIn = async (_provider: unknown, formData: FormData): Promise<Aut
         username: email,
         password: password
       }),
-      credentials: 'include', // Важно: включаем cookies
     });
 
     const data = await response.json();
@@ -207,8 +206,8 @@ const handleSignIn = async (_provider: unknown, formData: FormData): Promise<Aut
         authenticated: true
       };
       
-      // Для сессионной аутентификации не нужен токен
-      login(userData, 'session-auth'); // Передаем заглушку для токена
+      // ✅ Используем реальный токен из ответа, а не "session-auth"
+      login(userData, data.token); 
       window.location.href = '/main';
       
       return { type: 'Success' as const };
@@ -219,7 +218,7 @@ const handleSignIn = async (_provider: unknown, formData: FormData): Promise<Aut
     }
   } catch (err) {
     console.error('Login error:', err);
-    const errorMessage = err instanceof Error ? err.message : 'Network error. Please check if Spring server is running.';
+    const errorMessage = err instanceof Error ? err.message : 'Network error';
     setError(errorMessage);
     return { type: 'CredentialsSignin' as const, error: errorMessage };
   } finally {

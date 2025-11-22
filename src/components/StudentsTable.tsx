@@ -1,137 +1,63 @@
-import * as React from 'react';
-import Box from '@mui/material/Box';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Switch from '@mui/material/Switch';
-import TablePagination from '@mui/material/TablePagination';
-import IconButton from '@mui/material/IconButton';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import type { HeadCell, Student } from '../Types/Student';
-import type { Order } from '../Types/Table';
-import { getComparator, headCells } from './utils';
-import { EnhancedTableToolbar } from './EnhancedTableToolbar';
-import { EnhancedTableHead } from './EnhancedTableHead';
-import { deleteStudents, fetchStudents, updateStudent } from '../api/students';
-import { useAuth } from '../context/AuthContext';
-import { StudentDialog } from './StudentDialog';
 
+import React, { useState, useEffect } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Button,
+  Checkbox,
+  IconButton,
+  Tooltip,
+  Alert,
+  Box
+} from '@mui/material';
+import { Delete, Edit, Add } from '@mui/icons-material';
+import { useAuth } from "../context/AuthContext";
+
+import type { Student } from '../Types/Student';
+import { deleteStudent, deleteStudents, fetchStudents } from '../api/students';
 
 export default function StudentsTable() {
-  const { hasRole } = useAuth();
-  const isAdmin = hasRole('ADMIN');
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [error, setError] = useState<string>('');
   
-  const [students, setStudents] = React.useState<Student[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  
+  const { isAdmin, user } = useAuth();
 
-  const [order, setOrder] = React.useState<Order>('asc');
-  const [orderBy, setOrderBy] = React.useState<keyof Student>('grade');
-  const [selected, setSelected] = React.useState<readonly number[]>([]);
-  const [page, setPage] = React.useState(0);
-  const [dense, setDense] = React.useState(false);
-  const [rowsPerPage, setRowsPerPage] = React.useState(5);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editingStudent, setEditingStudent] = React.useState<Student | null>(null);
+  console.log('Current user:', user); 
+  console.log(' Is admin:', isAdmin);
 
-  // Загрузка студентов с бэкенда
-  React.useEffect(() => {
-    const loadStudents = async () => {
-      try {
-        const data = await fetchStudents();
-        setStudents(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load students');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadStudents = async () => {
+    try {
+      const data = await fetchStudents();
+      setStudents(data);
+    } catch (err) {
+      setError('Failed to load students');
+      console.error('Error loading students:', err);
+    }
+  };
 
+  useEffect(() => {
     loadStudents();
   }, []);
 
-  // Функция удаления выбранных студентов
-  const handleDeleteSelected = async () => {
-    if (!isAdmin || selected.length === 0) return;
-
-    try {
-      await deleteStudents(selected as number[]);
-      // Обновляем список студентов после удаления
-      const data = await fetchStudents();
-      setStudents(data);
-      setSelected([]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete students');
-    }
-  };
-
-  // Функция удаления одного студента
-  const handleDeleteStudent = async (id: number) => {
-    if (!isAdmin) return;
-
-    try {
-      await deleteStudents([id]);
-      const data = await fetchStudents();
-      setStudents(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete student');
-    }
-  };
-
-  // Функция редактирования студента
-  const handleEditStudent = (student: Student) => {
-    setEditingStudent(student);
-    setDialogOpen(true);
-  };
-
-  // Функция сохранения студента (создание и редактирование)
-  const handleSaveStudent = async (studentData: Omit<Student, 'id'>) => {
-    try {
-      if (editingStudent) {
-        // Редактирование существующего студента
-        await updateStudent(editingStudent.id, studentData);
-      }
-      // Обновляем список студентов
-      const data = await fetchStudents();
-      setStudents(data);
-      setDialogOpen(false);
-      setEditingStudent(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save student');
-    }
-  };
-
-  const handleRequestSort = (
-    _event: React.MouseEvent<unknown>,
-    property: keyof Student,
-  ) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
-  const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isAdmin) return;
-    
+  const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const newSelected = students.map((n: Student) => n.id);
-      setSelected(newSelected);
-      return;
+      const allIds = students.map(student => student.id);
+      setSelected(allIds);
+    } else {
+      setSelected([]);
     }
-    setSelected([]);
   };
 
-  const handleClick = (_event: React.MouseEvent<unknown>, id: number) => {
-    if (!isAdmin) return;
-    
+  const handleSelect = (id: number) => {
     const selectedIndex = selected.indexOf(id);
-    let newSelected: readonly number[] = [];
+    let newSelected: number[] = [];
 
     if (selectedIndex === -1) {
       newSelected = newSelected.concat(selected, id);
@@ -145,175 +71,191 @@ export default function StudentsTable() {
         selected.slice(selectedIndex + 1),
       );
     }
+
     setSelected(newSelected);
   };
 
-  const handleChangePage = (_event: unknown, newPage: number) => {
-    setPage(newPage);
+  const handleDelete = async (id: number) => {
+    if (!isAdmin) {
+      setError('Only administrators can delete students');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this student?')) {
+      return;
+    }
+
+    try {
+      await deleteStudent(id);
+      await loadStudents();
+      setSelected(selected.filter(selectedId => selectedId !== id));
+    } catch (err) {
+      setError('Failed to delete student');
+      console.error('Error deleting student:', err);
+    }
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+  const handleBulkDelete = async () => {
+    if (!isAdmin) {
+      setError('Only administrators can delete students');
+      return;
+    }
+
+    if (selected.length === 0) {
+      setError('No students selected');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${selected.length} students?`)) {
+      return;
+    }
+
+    try {
+      await deleteStudents(selected);
+      await loadStudents();
+      setSelected([]);
+    } catch (err) {
+      setError('Failed to delete students');
+      console.error('Error deleting students:', err);
+    }
   };
 
-  const handleChangeDense = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setDense(event.target.checked);
+  const handleAddStudent = () => {
+    if (!isAdmin) {
+      setError('Only administrators can add students');
+      return;
+    }
+    
+    console.log('Open add student dialog');
   };
 
-  // Вычисление видимых строк ДО условных рендеров
-  const emptyRows = React.useMemo(() =>
-    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - students.length) : 0,
-    [page, rowsPerPage, students.length]
-  );
-
-  const visibleRows = React.useMemo(
-    () =>
-      [...students]
-        .sort(getComparator(order, orderBy))
-        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [order, orderBy, page, rowsPerPage, students],
-  );
-
-  // Условный рендеринг ПОСЛЕ всех хуков
-  if (loading) {
-    return <div>Loading students...</div>;
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
+  const handleEditStudent = (student: Student) => {
+    if (!isAdmin) {
+      setError('Only administrators can edit students');
+      return;
+    }
+    
+    console.log('Open edit student dialog for:', student);
+  };
 
   return (
-    <Box sx={{ width: '100%' }}>
-      <Paper sx={{ width: '100%', mb: 2 }}>
-        <EnhancedTableToolbar 
-          numSelected={selected.length} 
-          isAdmin={isAdmin}
-          onDeleteSelected={handleDeleteSelected}
-        />
-        <TableContainer>
-          <Table
-            sx={{ minWidth: 750 }}
-            aria-labelledby="tableTitle"
-            size={dense ? 'small' : 'medium'}
-          >
-            <EnhancedTableHead
-              numSelected={selected.length}
-              order={order}
-              orderBy={orderBy}
-              onSelectAllClick={handleSelectAllClick}
-              onRequestSort={handleRequestSort}
-              rowCount={students.length}
-              headCells={headCells as HeadCell[]}
-              isAdmin={isAdmin}
-            />
-            <TableBody>
-              {visibleRows.map((row, index) => {
-                const isItemSelected = isAdmin && selected.includes(row.id);
-                const labelId = `enhanced-table-checkbox-${index}`;
+    <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      
+      {isAdmin && (
+        <Box sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Tooltip title="Add Student">
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={handleAddStudent}
+              color="primary"
+            >
+              Add Student
+            </Button>
+          </Tooltip>
+          
+          <Tooltip title="Delete Selected">
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<Delete />}
+                onClick={handleBulkDelete}
+                disabled={selected.length === 0}
+                color="error"
+              >
+                Delete Selected ({selected.length})
+              </Button>
+            </span>
+          </Tooltip>
+        </Box>
+      )}
 
-                return (
-                  <TableRow
-                    hover
-                    onClick={(event) => handleClick(event, row.id)}
-                    role="checkbox"
-                    aria-checked={isItemSelected}
-                    tabIndex={-1}
-                    key={row.id}
-                    selected={isItemSelected}
-                    sx={{ cursor: isAdmin ? 'pointer' : 'default' }}
-                  >
-                    {isAdmin && (
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          color="primary"
-                          checked={isItemSelected}
-                          inputProps={{
-                            'aria-labelledby': labelId,
-                          }}
-                        />
-                      </TableCell>
-                    )}
-                    <TableCell
-                      component="th"
-                      id={labelId}
-                      scope="row"
-                      padding={isAdmin ? "none" : "normal"}
-                    >
-                      {row.name}
-                    </TableCell>
-                    <TableCell align="right">{row.grade}</TableCell>
-                    <TableCell align="right">{row.attendance}%</TableCell>
-                    <TableCell align="right">{row.assignments}</TableCell>
-                    <TableCell align="right">{row.rating}</TableCell>
-                    {isAdmin && (
-                      <TableCell align="right">
-                        <IconButton 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditStudent(row);
-                          }}
-                          size="small"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteStudent(row.id);
-                          }}
-                          size="small"
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                );
-              })}
-              {emptyRows > 0 && (
-                <TableRow
-                  style={{
-                    height: (dense ? 33 : 53) * emptyRows,
-                  }}
-                >
-                  <TableCell colSpan={isAdmin ? 7 : 5} />
-                </TableRow>
+      {error && (
+        <Alert severity="error" onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+
+      <TableContainer>
+        <Table stickyHeader aria-label="sticky table">
+          <TableHead>
+            <TableRow>
+              
+              {isAdmin && (
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    indeterminate={selected.length > 0 && selected.length < students.length}
+                    checked={students.length > 0 && selected.length === students.length}
+                    onChange={handleSelectAll}
+                  />
+                </TableCell>
               )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={students.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage="Строк на странице:"
-          labelDisplayedRows={({ from, to, count }) => 
-            `${from}-${to} из ${count}`
-          }
-        />
-      </Paper>
-      <FormControlLabel
-        control={<Switch checked={dense} onChange={handleChangeDense} />}
-        label="Компактный вид"
-      />
+              
+              <TableCell>Name</TableCell>
+              <TableCell>Grade</TableCell>
+              <TableCell>Attendance</TableCell>
+              <TableCell>Assignments</TableCell>
+              <TableCell>Rating</TableCell>
+              
+              
+              {isAdmin && <TableCell>Actions</TableCell>}
+            </TableRow>
+          </TableHead>
+          
+          <TableBody>
+            {students.map((student) => (
+              <TableRow hover key={student.id}>
+                
+                {isAdmin && (
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={selected.indexOf(student.id) !== -1}
+                      onChange={() => handleSelect(student.id)}
+                    />
+                  </TableCell>
+                )}
+                
+                <TableCell>{student.name}</TableCell>
+                <TableCell>{student.grade}</TableCell>
+                <TableCell>{student.attendance}</TableCell>
+                <TableCell>{student.assignments}</TableCell>
+                <TableCell>{student.rating}</TableCell>
+                
+                
+                {isAdmin && (
+                  <TableCell>
+                    <Tooltip title="Edit">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleEditStudent(student)}
+                        color="primary"
+                      >
+                        <Edit />
+                      </IconButton>
+                    </Tooltip>
+                    
+                    <Tooltip title="Delete">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleDelete(student.id)}
+                        color="error"
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      {/* Диалог редактирования */}
-      <StudentDialog
-        open={dialogOpen}
-        onClose={() => {
-          setDialogOpen(false);
-          setEditingStudent(null);
-        }}
-        onSave={handleSaveStudent}
-        student={editingStudent}
-      />
-    </Box>
+      {students.length === 0 && (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          No students found
+        </Box>
+      )}
+    </Paper>
   );
 }

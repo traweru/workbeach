@@ -16,7 +16,7 @@ interface EnhancedTableProps {
   order: Order;
   orderBy: string;
   rowCount: number;
-  headCells: readonly HeadCell[]; // Добавляем readonly здесь
+  headCells: readonly HeadCell[]; 
   isAdmin: boolean;
 }
 

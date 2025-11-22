@@ -21,7 +21,7 @@ export function StudentDialog({ open, onClose, onSave, student }: StudentDialogP
         rating: 0
     });
 
-    // Заполняем форму данными студента при редактировании
+    
     React.useEffect(() => {
         if (student) {
             setFormData({
@@ -89,7 +89,7 @@ export function StudentDialog({ open, onClose, onSave, student }: StudentDialogP
                     label="Рейтинг"
                     type="number"
                     fullWidth
-                    inputProps={{ step: "0.1" }} // Используем inputProps вместо step
+                    inputProps={{ step: "0.1" }} 
                     value={formData.rating}
                     onChange={(e) => setFormData({...formData, rating: Number(e.target.value)})}
                 />

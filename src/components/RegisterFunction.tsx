@@ -188,7 +188,7 @@ const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
     role: 'STUDENT'
   };
 
-  console.log('📤 Registration request:', requestBody);
+  console.log('Registration request:', requestBody);
   
   try {
     const response = await fetch('http://localhost:8080/api/auth/register', {
@@ -199,31 +199,31 @@ const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
       body: JSON.stringify(requestBody),
     });
 
-    console.log('📥 Response status:', response.status);
-    console.log('📥 Response ok:', response.ok);
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
     
-    // Читаем ответ как текст сначала
+   
     const responseText = await response.text();
-    console.log('📥 Raw response:', responseText);
+    console.log(' Raw response:', responseText);
 
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
-      console.error('❌ JSON parse error:', parseError);
+      console.error('JSON parse error:', parseError);
       throw new Error('Invalid JSON response from server');
     }
 
     console.log('📥 Parsed response:', data);
 
     if (response.ok) {
-      // УСПЕШНАЯ регистрация
-      console.log('✅ Registration successful! User ID:', data.userid);
+     
+      console.log('Registration successful! User ID:', data.userid);
       alert('Registration successful! You can now login.');
-      window.location.href = '/'; // Перенаправляем на логин
+      window.location.href = '/'; 
     } else {
-      // ОШИБКА от сервера
-      console.log('❌ Server error:', data);
+     
+      console.log(' Server error:', data);
       setError(data.message || data.error || `Registration failed`);
     }
     
