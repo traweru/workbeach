@@ -1,34 +1,31 @@
 import * as React from 'react';
-import Box from '@mui/material/Box';
-import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import TableSortLabel from '@mui/material/TableSortLabel';
+import TableCell from '@mui/material/TableCell';
 import Checkbox from '@mui/material/Checkbox';
+import TableSortLabel from '@mui/material/TableSortLabel';
+import Box from '@mui/material/Box';
 import { visuallyHidden } from '@mui/utils';
-import type { EnhancedTableHeadProps } from '../Types/Table';
-import type { Student } from '../Types/Student';
+import type { Student, HeadCell } from '../Types/Student';
+import type { Order } from '../Types/Table';
 
-interface EnhancedTableHeadPropsExtended extends EnhancedTableHeadProps {
+interface EnhancedTableProps {
+  numSelected: number;
+  onRequestSort: (event: React.MouseEvent<unknown>, property: keyof Student) => void;
+  onSelectAllClick: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  order: Order;
+  orderBy: string;
+  rowCount: number;
+  headCells: readonly HeadCell[]; // Добавляем readonly здесь
   isAdmin: boolean;
 }
 
-export function EnhancedTableHead(props: EnhancedTableHeadPropsExtended) {
-  const { 
-    onSelectAllClick, 
-    order, 
-    orderBy, 
-    numSelected, 
-    rowCount, 
-    onRequestSort,
-    headCells,
-    isAdmin 
-  } = props;
-
-  const createSortHandler =
-    (property: keyof Student) => (event: React.MouseEvent<unknown>) => {
-      onRequestSort(event, property);
-    };
+export function EnhancedTableHead(props: EnhancedTableProps) {
+  const { onSelectAllClick, order, orderBy, numSelected, rowCount, onRequestSort, headCells, isAdmin } = props;
+  
+  const createSortHandler = (property: keyof Student) => (event: React.MouseEvent<unknown>) => {
+    onRequestSort(event, property);
+  };
 
   return (
     <TableHead>
@@ -48,9 +45,9 @@ export function EnhancedTableHead(props: EnhancedTableHeadPropsExtended) {
         )}
         {headCells.map((headCell) => (
           <TableCell
-            key={headCell.id as string}
+            key={headCell.id}
             align={headCell.numeric ? 'right' : 'left'}
-            padding={headCell.disablePadding && isAdmin ? 'none' : 'normal'}
+            padding={headCell.disablePadding ? 'none' : 'normal'}
             sortDirection={orderBy === headCell.id ? order : false}
           >
             <TableSortLabel
@@ -67,6 +64,9 @@ export function EnhancedTableHead(props: EnhancedTableHeadPropsExtended) {
             </TableSortLabel>
           </TableCell>
         ))}
+        {isAdmin && (
+          <TableCell align="right">Действия</TableCell>
+        )}
       </TableRow>
     </TableHead>
   );

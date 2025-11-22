@@ -23,6 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import type { AuthResponse } from '@toolpad/core/SignInPage';
 
 const providers = [{ id: 'credentials', name: 'Email and Password' }];
+
 function CustomEmailField() {
   return (
     <TextField
@@ -172,57 +173,59 @@ export default function LoginFunction() {
   const [loading, setLoading] = React.useState(false);
   const { login } = useAuth();
 
-  const handleSignIn = async (_provider: unknown, formData: FormData): Promise<AuthResponse> => {
-    setLoading(true);
-    setError('');
+const handleSignIn = async (_provider: unknown, formData: FormData): Promise<AuthResponse> => {
+  setLoading(true);
+  setError('');
 
-    try {
-      const email = formData.get('email') as string;
-      const password = formData.get('password') as string;
+  try {
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-      console.log('Sending login request to Spring...');
+    console.log('Sending login request to Spring...');
 
-      const response = await fetch('http://localhost:8080/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          username: email,
-          password: password
-        }),
-      });
+    const response = await fetch('http://localhost:8080/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        username: email,
+        password: password
+      }),
+      credentials: 'include', // Важно: включаем cookies
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (response.ok) {
-        console.log('Login successful:', data);
-        
-        const userData = {
-          username: data.username,
-          roles: data.roles,
-          authenticated: true
-        };
-        
-        login(userData);
-        window.location.href = '/main';
-        
-        return { type: 'Success', success: "true" } as AuthResponse;
-      } else {
-        const errorMessage = data.message || data.error || 'Login failed';
-        setError(errorMessage);
-        return { type: 'CredentialsSignin', error: errorMessage } as AuthResponse;
-      }
-    } catch (err) {
-      console.error('Login error:', err);
-      const errorMessage = 'Network error. Please check if Spring server is running.';
+    if (response.ok) {
+      console.log('Login successful:', data);
+      
+      const userData = {
+        username: data.username,
+        roles: data.roles,
+        authenticated: true
+      };
+      
+      // Для сессионной аутентификации не нужен токен
+      login(userData, 'session-auth'); // Передаем заглушку для токена
+      window.location.href = '/main';
+      
+      return { type: 'Success' as const };
+    } else {
+      const errorMessage = data.message || data.error || 'Login failed';
       setError(errorMessage);
-      return { type: 'CredentialsSignin', error: errorMessage } as AuthResponse;
-    } finally {
-      setLoading(false);
+      return { type: 'CredentialsSignin' as const, error: errorMessage };
     }
-  };
+  } catch (err) {
+    console.error('Login error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Network error. Please check if Spring server is running.';
+    setError(errorMessage);
+    return { type: 'CredentialsSignin' as const, error: errorMessage };
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <AppProvider theme={theme}>

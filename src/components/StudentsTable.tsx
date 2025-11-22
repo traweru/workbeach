@@ -10,17 +10,26 @@ import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import TablePagination from '@mui/material/TablePagination';
-import type { Student } from '../Types/Student';
+import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import type { HeadCell, Student } from '../Types/Student';
 import type { Order } from '../Types/Table';
-import { getComparator, headCells, initialStudents } from './utils';
+import { getComparator, headCells } from './utils';
 import { EnhancedTableToolbar } from './EnhancedTableToolbar';
 import { EnhancedTableHead } from './EnhancedTableHead';
+import { deleteStudents, fetchStudents, updateStudent } from '../api/students';
 import { useAuth } from '../context/AuthContext';
+import { StudentDialog } from './StudentDialog';
 
 
 export default function StudentsTable() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole('ADMIN');
+  
+  const [students, setStudents] = React.useState<Student[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   const [order, setOrder] = React.useState<Order>('asc');
   const [orderBy, setOrderBy] = React.useState<keyof Student>('grade');
@@ -28,6 +37,75 @@ export default function StudentsTable() {
   const [page, setPage] = React.useState(0);
   const [dense, setDense] = React.useState(false);
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editingStudent, setEditingStudent] = React.useState<Student | null>(null);
+
+  // Загрузка студентов с бэкенда
+  React.useEffect(() => {
+    const loadStudents = async () => {
+      try {
+        const data = await fetchStudents();
+        setStudents(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load students');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStudents();
+  }, []);
+
+  // Функция удаления выбранных студентов
+  const handleDeleteSelected = async () => {
+    if (!isAdmin || selected.length === 0) return;
+
+    try {
+      await deleteStudents(selected as number[]);
+      // Обновляем список студентов после удаления
+      const data = await fetchStudents();
+      setStudents(data);
+      setSelected([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete students');
+    }
+  };
+
+  // Функция удаления одного студента
+  const handleDeleteStudent = async (id: number) => {
+    if (!isAdmin) return;
+
+    try {
+      await deleteStudents([id]);
+      const data = await fetchStudents();
+      setStudents(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete student');
+    }
+  };
+
+  // Функция редактирования студента
+  const handleEditStudent = (student: Student) => {
+    setEditingStudent(student);
+    setDialogOpen(true);
+  };
+
+  // Функция сохранения студента (создание и редактирование)
+  const handleSaveStudent = async (studentData: Omit<Student, 'id'>) => {
+    try {
+      if (editingStudent) {
+        // Редактирование существующего студента
+        await updateStudent(editingStudent.id, studentData);
+      }
+      // Обновляем список студентов
+      const data = await fetchStudents();
+      setStudents(data);
+      setDialogOpen(false);
+      setEditingStudent(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save student');
+    }
+  };
 
   const handleRequestSort = (
     _event: React.MouseEvent<unknown>,
@@ -39,10 +117,10 @@ export default function StudentsTable() {
   };
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isAdmin) return; // Только админ может выбирать
+    if (!isAdmin) return;
     
     if (event.target.checked) {
-      const newSelected = initialStudents.map((n) => n.id);
+      const newSelected = students.map((n: Student) => n.id);
       setSelected(newSelected);
       return;
     }
@@ -50,7 +128,7 @@ export default function StudentsTable() {
   };
 
   const handleClick = (_event: React.MouseEvent<unknown>, id: number) => {
-    if (!isAdmin) return; // Только админ может выбирать
+    if (!isAdmin) return;
     
     const selectedIndex = selected.indexOf(id);
     let newSelected: readonly number[] = [];
@@ -83,16 +161,28 @@ export default function StudentsTable() {
     setDense(event.target.checked);
   };
 
-  const emptyRows =
-    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - initialStudents.length) : 0;
+  // Вычисление видимых строк ДО условных рендеров
+  const emptyRows = React.useMemo(() =>
+    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - students.length) : 0,
+    [page, rowsPerPage, students.length]
+  );
 
   const visibleRows = React.useMemo(
     () =>
-      [...initialStudents]
+      [...students]
         .sort(getComparator(order, orderBy))
         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [order, orderBy, page, rowsPerPage],
+    [order, orderBy, page, rowsPerPage, students],
   );
+
+  // Условный рендеринг ПОСЛЕ всех хуков
+  if (loading) {
+    return <div>Loading students...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -100,11 +190,7 @@ export default function StudentsTable() {
         <EnhancedTableToolbar 
           numSelected={selected.length} 
           isAdmin={isAdmin}
-          onDeleteSelected={() => {
-            // TODO: Реализовать удаление выбранных студентов
-            console.log('Delete selected:', selected);
-            setSelected([]);
-          }}
+          onDeleteSelected={handleDeleteSelected}
         />
         <TableContainer>
           <Table
@@ -118,8 +204,8 @@ export default function StudentsTable() {
               orderBy={orderBy}
               onSelectAllClick={handleSelectAllClick}
               onRequestSort={handleRequestSort}
-              rowCount={initialStudents.length}
-              headCells={headCells}
+              rowCount={students.length}
+              headCells={headCells as HeadCell[]}
               isAdmin={isAdmin}
             />
             <TableBody>
@@ -161,6 +247,29 @@ export default function StudentsTable() {
                     <TableCell align="right">{row.attendance}%</TableCell>
                     <TableCell align="right">{row.assignments}</TableCell>
                     <TableCell align="right">{row.rating}</TableCell>
+                    {isAdmin && (
+                      <TableCell align="right">
+                        <IconButton 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditStudent(row);
+                          }}
+                          size="small"
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteStudent(row.id);
+                          }}
+                          size="small"
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}
@@ -170,7 +279,7 @@ export default function StudentsTable() {
                     height: (dense ? 33 : 53) * emptyRows,
                   }}
                 >
-                  <TableCell colSpan={isAdmin ? 6 : 5} />
+                  <TableCell colSpan={isAdmin ? 7 : 5} />
                 </TableRow>
               )}
             </TableBody>
@@ -179,7 +288,7 @@ export default function StudentsTable() {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={initialStudents.length}
+          count={students.length}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
@@ -193,6 +302,17 @@ export default function StudentsTable() {
       <FormControlLabel
         control={<Switch checked={dense} onChange={handleChangeDense} />}
         label="Компактный вид"
+      />
+
+      {/* Диалог редактирования */}
+      <StudentDialog
+        open={dialogOpen}
+        onClose={() => {
+          setDialogOpen(false);
+          setEditingStudent(null);
+        }}
+        onSave={handleSaveStudent}
+        student={editingStudent}
       />
     </Box>
   );
