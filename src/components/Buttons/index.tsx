@@ -1,28 +1,24 @@
-import styled from "styled-components";
-
 interface Props {
   text: string;
   color: string;
+  onClick?: () => void;
 }
 
-export function Button(props: Props) {
-  return <ButtonCastom color={props.color}>{props.text}</ButtonCastom>;
+export function Button({ text, color, onClick }: Props) {
+  return (
+    <button 
+      style={{ 
+        backgroundColor: color, 
+        color: 'white', 
+        border: 'none', 
+        padding: '10px 20px', 
+        margin: '5px',
+        borderRadius: '5px',
+        cursor: 'pointer'
+      }} 
+      onClick={onClick}
+    >
+      {text}
+    </button>
+  );
 }
-
-const ButtonCastom = styled.button<{color: string}>`
-  width: 100px;
-  height: 50px;
-  background-color: ${(p) => p.color};
-  border: none;
-  cursor: pointer;
-  transition: all 0.1s ease;
-  
-  &:active {
-    background-color: #333333;
-    transform: scale(0.98);
-  }
-  
-  &:hover {
-    opacity: 0.9;
-  }
-`;

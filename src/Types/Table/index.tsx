@@ -8,7 +8,8 @@ export interface EnhancedTableHeadProps {
   order: Order;
   orderBy: string;
   rowCount: number;
-  headCells: readonly HeadCell[]; 
+  headCells: readonly HeadCell[];
+  isAdmin: boolean; 
 }
 export interface EnhancedTableToolbarProps {
   numSelected: number;

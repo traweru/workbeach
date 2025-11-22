@@ -19,10 +19,10 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { AppProvider } from '@toolpad/core/AppProvider';
 import { SignInPage } from '@toolpad/core/SignInPage';
 import { useTheme } from '@mui/material/styles';
+import { useAuth } from '../context/AuthContext';
+import type { AuthResponse } from '@toolpad/core/SignInPage';
 
 const providers = [{ id: 'credentials', name: 'Email and Password' }];
-
-// Custom Email Field Component
 function CustomEmailField() {
   return (
     <TextField
@@ -170,8 +170,9 @@ export default function LoginFunction() {
   const theme = useTheme();
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const { login } = useAuth();
 
-  const handleSignIn = async (_provider: unknown, formData: FormData) => {
+  const handleSignIn = async (_provider: unknown, formData: FormData): Promise<AuthResponse> => {
     setLoading(true);
     setError('');
 
@@ -188,7 +189,7 @@ export default function LoginFunction() {
           'Accept': 'application/json',
         },
         body: JSON.stringify({
-          username: email,  // Ваш Spring ожидает 'username'
+          username: email,
           password: password
         }),
       });
@@ -198,26 +199,29 @@ export default function LoginFunction() {
       if (response.ok) {
         console.log('Login successful:', data);
         
-        // Сохраняем данные аутентификации
-        localStorage.setItem('authToken', 'authenticated');
-        localStorage.setItem('user', JSON.stringify({
+        const userData = {
           username: data.username,
-          roles: data.roles
-        }));
+          roles: data.roles,
+          authenticated: true
+        };
         
-        // Перенаправляем на главную страницу
+        login(userData);
         window.location.href = '/main';
+        
+        return { type: 'Success', success: "true" } as AuthResponse;
       } else {
-        setError(data.message || data.error || 'Login failed');
+        const errorMessage = data.message || data.error || 'Login failed';
+        setError(errorMessage);
+        return { type: 'CredentialsSignin', error: errorMessage } as AuthResponse;
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError('Network error. Please check if Spring server is running.');
+      const errorMessage = 'Network error. Please check if Spring server is running.';
+      setError(errorMessage);
+      return { type: 'CredentialsSignin', error: errorMessage } as AuthResponse;
     } finally {
       setLoading(false);
     }
-
-    return undefined;
   };
 
   return (

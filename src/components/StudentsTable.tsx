@@ -15,9 +15,13 @@ import type { Order } from '../Types/Table';
 import { getComparator, headCells, initialStudents } from './utils';
 import { EnhancedTableToolbar } from './EnhancedTableToolbar';
 import { EnhancedTableHead } from './EnhancedTableHead';
+import { useAuth } from '../context/AuthContext';
 
 
 export default function StudentsTable() {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('ADMIN');
+
   const [order, setOrder] = React.useState<Order>('asc');
   const [orderBy, setOrderBy] = React.useState<keyof Student>('grade');
   const [selected, setSelected] = React.useState<readonly number[]>([]);
@@ -35,6 +39,8 @@ export default function StudentsTable() {
   };
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) return; // Только админ может выбирать
+    
     if (event.target.checked) {
       const newSelected = initialStudents.map((n) => n.id);
       setSelected(newSelected);
@@ -44,6 +50,8 @@ export default function StudentsTable() {
   };
 
   const handleClick = (_event: React.MouseEvent<unknown>, id: number) => {
+    if (!isAdmin) return; // Только админ может выбирать
+    
     const selectedIndex = selected.indexOf(id);
     let newSelected: readonly number[] = [];
 
@@ -89,7 +97,15 @@ export default function StudentsTable() {
   return (
     <Box sx={{ width: '100%' }}>
       <Paper sx={{ width: '100%', mb: 2 }}>
-        <EnhancedTableToolbar numSelected={selected.length} />
+        <EnhancedTableToolbar 
+          numSelected={selected.length} 
+          isAdmin={isAdmin}
+          onDeleteSelected={() => {
+            // TODO: Реализовать удаление выбранных студентов
+            console.log('Delete selected:', selected);
+            setSelected([]);
+          }}
+        />
         <TableContainer>
           <Table
             sx={{ minWidth: 750 }}
@@ -104,10 +120,11 @@ export default function StudentsTable() {
               onRequestSort={handleRequestSort}
               rowCount={initialStudents.length}
               headCells={headCells}
+              isAdmin={isAdmin}
             />
             <TableBody>
               {visibleRows.map((row, index) => {
-                const isItemSelected = selected.includes(row.id);
+                const isItemSelected = isAdmin && selected.includes(row.id);
                 const labelId = `enhanced-table-checkbox-${index}`;
 
                 return (
@@ -119,22 +136,24 @@ export default function StudentsTable() {
                     tabIndex={-1}
                     key={row.id}
                     selected={isItemSelected}
-                    sx={{ cursor: 'pointer' }}
+                    sx={{ cursor: isAdmin ? 'pointer' : 'default' }}
                   >
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        color="primary"
-                        checked={isItemSelected}
-                        inputProps={{
-                          'aria-labelledby': labelId,
-                        }}
-                      />
-                    </TableCell>
+                    {isAdmin && (
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          color="primary"
+                          checked={isItemSelected}
+                          inputProps={{
+                            'aria-labelledby': labelId,
+                          }}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell
                       component="th"
                       id={labelId}
                       scope="row"
-                      padding="none"
+                      padding={isAdmin ? "none" : "normal"}
                     >
                       {row.name}
                     </TableCell>
@@ -151,7 +170,7 @@ export default function StudentsTable() {
                     height: (dense ? 33 : 53) * emptyRows,
                   }}
                 >
-                  <TableCell colSpan={6} />
+                  <TableCell colSpan={isAdmin ? 6 : 5} />
                 </TableRow>
               )}
             </TableBody>

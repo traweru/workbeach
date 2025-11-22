@@ -9,8 +9,11 @@ import { visuallyHidden } from '@mui/utils';
 import type { EnhancedTableHeadProps } from '../Types/Table';
 import type { Student } from '../Types/Student';
 
+interface EnhancedTableHeadPropsExtended extends EnhancedTableHeadProps {
+  isAdmin: boolean;
+}
 
-export function EnhancedTableHead(props: EnhancedTableHeadProps) {
+export function EnhancedTableHead(props: EnhancedTableHeadPropsExtended) {
   const { 
     onSelectAllClick, 
     order, 
@@ -18,7 +21,8 @@ export function EnhancedTableHead(props: EnhancedTableHeadProps) {
     numSelected, 
     rowCount, 
     onRequestSort,
-    headCells 
+    headCells,
+    isAdmin 
   } = props;
 
   const createSortHandler =
@@ -29,22 +33,24 @@ export function EnhancedTableHead(props: EnhancedTableHeadProps) {
   return (
     <TableHead>
       <TableRow>
-        <TableCell padding="checkbox">
-          <Checkbox
-            color="primary"
-            indeterminate={numSelected > 0 && numSelected < rowCount}
-            checked={rowCount > 0 && numSelected === rowCount}
-            onChange={onSelectAllClick}
-            inputProps={{
-              'aria-label': 'select all students',
-            }}
-          />
-        </TableCell>
+        {isAdmin && (
+          <TableCell padding="checkbox">
+            <Checkbox
+              color="primary"
+              indeterminate={numSelected > 0 && numSelected < rowCount}
+              checked={rowCount > 0 && numSelected === rowCount}
+              onChange={onSelectAllClick}
+              inputProps={{
+                'aria-label': 'select all students',
+              }}
+            />
+          </TableCell>
+        )}
         {headCells.map((headCell) => (
           <TableCell
             key={headCell.id as string}
             align={headCell.numeric ? 'right' : 'left'}
-            padding={headCell.disablePadding ? 'none' : 'normal'}
+            padding={headCell.disablePadding && isAdmin ? 'none' : 'normal'}
             sortDirection={orderBy === headCell.id ? order : false}
           >
             <TableSortLabel

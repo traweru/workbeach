@@ -31,3 +31,14 @@ export interface UserData {
   lastName?: string;
   confirmPassword?: string;
 }
+export interface User {
+  username: string;
+  roles: string;
+  authenticated: boolean;
+}
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}

@@ -8,10 +8,12 @@ import { alpha } from '@mui/material/styles';
 
 interface EnhancedTableToolbarProps {
   numSelected: number;
+  isAdmin: boolean;
+  onDeleteSelected: () => void;
 }
 
 export function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
-  const { numSelected } = props;
+  const { numSelected, isAdmin, onDeleteSelected } = props;
 
   return (
     <Toolbar
@@ -45,19 +47,19 @@ export function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
           Список студентов
         </Typography>
       )}
-      {numSelected > 0 ? (
+      {isAdmin && numSelected > 0 ? (
         <Tooltip title="Удалить">
-          <IconButton>
+          <IconButton onClick={onDeleteSelected}>
             <DeleteIcon />
           </IconButton>
         </Tooltip>
-      ) : (
+      ) : isAdmin ? (
         <Tooltip title="Фильтровать список">
           <IconButton>
             <FilterListIcon />
           </IconButton>
         </Tooltip>
-      )}
+      ) : null}
     </Toolbar>
   );
 }

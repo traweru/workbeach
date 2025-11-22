@@ -227,16 +227,20 @@ const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
       setError(data.message || data.error || `Registration failed`);
     }
     
-  } catch (error: any) {
-    console.error('❌ Network error:', error);
-    if (error.name === 'TypeError') {
-      setError('Network error: Cannot connect to server. Make sure backend is running.');
-    } else {
-      setError(error.message || 'Registration failed. Please try again.');
-    }
-  } finally {
-    setLoading(false);
+} catch (error) {
+  console.error('Registration error:', error);
+  let errorMessage = 'Registration failed. Please try again.';
+  
+  if (error instanceof Error) {
+    errorMessage = error.message;
+  } else if (typeof error === 'string') {
+    errorMessage = error;
   }
+  
+  setError(errorMessage);
+} finally {
+  setLoading(false);
+}
 };
 
   return (

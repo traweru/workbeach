@@ -1,7 +1,21 @@
 import { Button } from "../../components/Buttons";
 import StudentsTable from "../../components/StudentsTable";
+import { useAuth } from "../../context/AuthContext";
 
 export function MainPage(){
+    const { hasRole } = useAuth();
+    const isAdmin = hasRole('ADMIN');
+
+    const handleAddStudent = () => {
+        // TODO: Реализовать добавление студента
+        console.log('Add student');
+    };
+
+    const handleEditStudents = () => {
+        // TODO: Реализовать редактирование студентов
+        console.log('Edit students');
+    };
+
     return(
         <>
         <h1>
@@ -10,7 +24,12 @@ export function MainPage(){
         <div style={{ padding: '20px' }}>
             <StudentsTable/>
         </div>
-        <Button text="add student" color="#a7a2a2"/><Button text="redact" color="#da1010ff"/>
+        {isAdmin && (
+            <>
+                <Button text="add student" color="#a7a2a2" onClick={handleAddStudent}/>
+                <Button text="redact" color="#da1010ff" onClick={handleEditStudents}/>
+            </>
+        )}
         </>
     )
 }
